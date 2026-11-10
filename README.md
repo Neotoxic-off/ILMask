@@ -4,6 +4,14 @@
 
 # ILMask
 
+<p align="center">
+  <a href="https://github.com/Neotoxic-off/ILMask/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Neotoxic-off/ILMask/ci.yml?branch=master&label=CI" alt="CI"></a>
+  <a href="https://github.com/Neotoxic-off/ILMask/releases"><img src="https://img.shields.io/github/v/release/Neotoxic-off/ILMask?include_prereleases" alt="Release"></a>
+  <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10">
+  <img src="https://img.shields.io/badge/coverage-100%25-brightgreen" alt="Coverage: 100%">
+  <img src="https://img.shields.io/badge/dependencies-0-brightgreen" alt="No dependencies">
+</p>
+
 IDA-style masks for .NET IL code. A mask is a byte pattern where `??` matches any byte:
 
 ```
@@ -12,6 +20,9 @@ IDA-style masks for .NET IL code. A mask is a byte pattern where `??` matches an
 
 You can **write** masks (by hand, from a method body, or from ILSpy / dnSpy / ildasm text),
 **read** them back from text, and **find** them in IL to pull out the bytes under the wildcards.
+
+- [`docs/instructions.md`](docs/instructions.md): how every IL instruction maps to mask bytes, and which operands are wildcards.
+- [Complete example](#complete-example): every feature in one program.
 
 ## Requirements
 
@@ -156,6 +167,102 @@ foreach (IlMaskMatch match in ldstr!.Find(il))
 
     Console.WriteLine(method.Module.ResolveString(token));
 }
+```
+
+### Complete example
+
+Every feature in one program (`Program.cs` of a console app referencing ILMask):
+
+```csharp
+using System.Buffers.Binary;
+using System.Reflection;
+using ILMask;
+
+const string Listing = """
+    .method public hidebysig instance string Greet () cil managed
+    {
+        IL_0000: ldstr "Hello, "
+        IL_0005: ldarg.0
+        IL_0006: ldfld string Greeter::_name
+        IL_000b: call string [System.Runtime]System.String::Concat(string, string)
+        IL_0010: ret
+    }
+    """;
+MethodInfo method = typeof(Greeter).GetMethod(nameof(Greeter.Greet))!;
+byte[] il = method.GetMethodBody()!.GetILAsByteArray()!;
+byte[] dll = File.ReadAllBytes(typeof(IlMask).Assembly.Location);
+IlMask? getter = null;
+IlMask? fromIl = null;
+IlMask? fromListing = null;
+IlMask? reread = null;
+IlMask? ldstr = null;
+string? error = null;
+
+// 1. Read a mask from text. Failures return false with a reason; nothing throws.
+if (!IlMask.TryParse("02 GG", out _, out error))
+{
+    Console.WriteLine($"TryParse error:  {error}");
+}
+
+// 2. Write a mask by hand: null is a wildcard. Same as TryParse("02 7B ?? ?? ?? ?? 2A").
+if (IlMask.TryCreate([0x02, 0x7B, null, null, null, null, 0x2A], out getter))
+{
+    Console.WriteLine($"TryCreate:       {getter}");
+}
+
+// 3. Write a mask from a compiled method: metadata tokens become wildcards.
+if (IlMask.TryFromIl(il, out fromIl, out error))
+{
+    Console.WriteLine($"TryFromIl:       {fromIl}");
+}
+
+// 4. Write a mask from ILSpy / dnSpy / ildasm text: the same mask as TryFromIl.
+if (IlMask.TryFromListing(Listing, out fromListing, out error))
+{
+    Console.WriteLine($"TryFromListing:  {fromListing}");
+}
+
+// 5. ToString is the text form, readable again by TryParse.
+if (fromIl is not null && IlMask.TryParse(fromIl.ToString(), out reread))
+{
+    Console.WriteLine($"Round trip:      {reread.Pattern.SequenceEqual(fromIl.Pattern)}");
+}
+
+// 6. Find in a method body (matches start on instructions), then decode the bytes under the wildcards.
+if (IlMask.TryParse("72 ?? ?? ?? ??", out ldstr))
+{
+    foreach (IlMaskMatch match in ldstr.Find(il))
+    {
+        int token = BinaryPrimitives.ReadInt32LittleEndian(match.Wildcards.Span);
+
+        Console.WriteLine($"Find ldstr:      offset {match.Offset}, \"{method.Module.ResolveString(token)}\"");
+    }
+}
+
+// 7. FindBytes searches raw bytes at every offset, e.g. a whole .dll.
+if (getter is not null)
+{
+    Console.WriteLine($"FindBytes:       {getter.FindBytes(dll).Count()} field getters in ILMask.dll");
+}
+
+internal sealed class Greeter(string name)
+{
+    private readonly string _name = name;
+
+    public string Greet() => "Hello, " + _name;
+}
+```
+
+Output:
+
+```
+TryParse error:  Invalid mask byte 'GG' at position 1: expected two hex digits, '?' or '??'.
+TryCreate:       02 7B ?? ?? ?? ?? 2A
+TryFromIl:       72 ?? ?? ?? ?? 02 7B ?? ?? ?? ?? 28 ?? ?? ?? ?? 2A
+TryFromListing:  72 ?? ?? ?? ?? 02 7B ?? ?? ?? ?? 28 ?? ?? ?? ?? 2A
+Round trip:      True
+Find ldstr:      offset 0, "Hello, "
+FindBytes:       10 field getters in ILMask.dll
 ```
 
 ## Development
