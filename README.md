@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="ILMask: IL code cut into an IDA-style mask" width="720">
+  <img src="assets/logo.svg" alt="ILMask: IL code on one side, the IDA-style mask on the other, split by 🎭" width="360">
 </p>
 
 # ILMask
