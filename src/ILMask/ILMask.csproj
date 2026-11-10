@@ -3,6 +3,8 @@
   <PropertyGroup>
     <PackageId>ILMask</PackageId>
     <Description>IDA-style masks (byte patterns with wildcards) for .NET IL code.</Description>
+    <Authors>Neotoxic-off</Authors>
+    <RepositoryUrl>https://github.com/Neotoxic-off/ILMask</RepositoryUrl>
   </PropertyGroup>
 
 </Project>

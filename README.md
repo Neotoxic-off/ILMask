@@ -17,6 +17,27 @@ You can **write** masks (by hand, from a method body, or from ILSpy / dnSpy / il
 
 .NET 10 SDK.
 
+## Install
+
+Download `ILMask.<version>.nupkg` from the [Releases](https://github.com/Neotoxic-off/ILMask/releases)
+into a folder, then add it to your project:
+
+```bash
+dotnet add package ILMask --source ./path/to/that/folder
+```
+
+Each release also has `ILMask.dll` (with `ILMask.xml` for IntelliSense) if you prefer a plain reference.
+
+## Release
+
+The CI (`.github/workflows/ci.yml`) lints, tests and packs every push and pull request; the package is
+attached to each run. Pushing a `v` tag publishes a GitHub release with that version:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ## No exceptions
 
 Every factory follows the `Try` pattern and never throws, even on `null`:

@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: write # gh release create
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Lint
+        run: dotnet format --verify-no-changes
+
+      - name: Test (fails below 100% coverage)
+        run: dotnet test
+
+      - name: Version
+        # Tag v1.2.3 gives 1.2.3; any other build gives a prerelease such as 0.0.0-ci.42.
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=0.0.0-ci.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Pack
+        run: |
+          dotnet pack src/ILMask -c Release -o artifacts -p:Version="$VERSION"
+          cp src/ILMask/bin/Release/net10.0/ILMask.dll src/ILMask/bin/Release/net10.0/ILMask.xml artifacts/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ILMask-${{ env.VERSION }}
+          path: artifacts/
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" artifacts/* --title "ILMask $VERSION" --generate-notes
