@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>ILMask</PackageId>
+    <Description>IDA-style masks (byte patterns with wildcards) for .NET IL code.</Description>
+  </PropertyGroup>
+
+</Project>
