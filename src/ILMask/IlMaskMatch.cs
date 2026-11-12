@@ -4,4 +4,11 @@ namespace ILMask;
 /// <param name="Offset">The offset of the first matched byte.</param>
 /// <param name="Bytes">All matched bytes.</param>
 /// <param name="Wildcards">The bytes under the mask's wildcards, in order: the content the mask extracts.</param>
-public sealed record IlMaskMatch(int Offset, ReadOnlyMemory<byte> Bytes, ReadOnlyMemory<byte> Wildcards);
+public sealed record IlMaskMatch(int Offset, ReadOnlyMemory<byte> Bytes, ReadOnlyMemory<byte> Wildcards)
+{
+    /// <summary>
+    /// Gets the bytes under each run of consecutive wildcards, in order: one entry per
+    /// metadata token for a mask such as <c>7B ?? ?? ?? ?? 28 ?? ?? ?? ??</c>.
+    /// </summary>
+    public IReadOnlyList<ReadOnlyMemory<byte>> Groups { get; init; } = [];
+}

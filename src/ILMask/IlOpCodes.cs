@@ -29,6 +29,15 @@ internal static class IlOpCodes
         _ => 4,
     };
 
+    /// <summary>Gets the kind of operand that <see cref="IlMask.TryWildcard(IlOperands, out IlMask)"/> can wildcard.</summary>
+    public static IlOperands OperandKind(OperandType type) => type switch
+    {
+        OperandType.ShortInlineI or OperandType.InlineI or OperandType.InlineI8
+            or OperandType.ShortInlineR or OperandType.InlineR => IlOperands.Constants,
+        OperandType.ShortInlineBrTarget or OperandType.InlineBrTarget or OperandType.InlineSwitch => IlOperands.Branches,
+        _ => IlOperands.None,
+    };
+
     /// <summary>Gets a value indicating whether the operand is a metadata token.</summary>
     public static bool HasTokenOperand(OperandType type) => type is OperandType.InlineField or OperandType.InlineMethod
         or OperandType.InlineSig or OperandType.InlineString or OperandType.InlineTok or OperandType.InlineType;

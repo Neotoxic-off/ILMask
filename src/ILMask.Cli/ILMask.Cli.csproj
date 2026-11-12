@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>ilmask</ToolCommandName>
+    <PackageId>ILMask.Cli</PackageId>
+    <Description>Command-line tool for ILMask: find IDA-style masks in .NET assemblies, write and read them.</Description>
+    <Authors>Neotoxic-off</Authors>
+    <RepositoryUrl>https://github.com/Neotoxic-off/ILMask</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ILMask\ILMask.csproj" />
+    <InternalsVisibleTo Include="ILMask.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

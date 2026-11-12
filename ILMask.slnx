@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/ILMask.Cli/ILMask.Cli.csproj" />
     <Project Path="src/ILMask/ILMask.csproj" />
   </Folder>
   <Folder Name="/tests/">

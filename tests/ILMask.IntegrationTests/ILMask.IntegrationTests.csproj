@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ILMask\ILMask.csproj" />
+    <ProjectReference Include="..\..\src\ILMask.Cli\ILMask.Cli.csproj" />
   </ItemGroup>
 
 </Project>

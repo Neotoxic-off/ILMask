@@ -12,6 +12,9 @@ internal readonly record struct IlInstruction(OpCode OpCode, int Size)
     /// <summary>Gets a value indicating whether the operand is a metadata token.</summary>
     public bool HasTokenOperand => IlOpCodes.HasTokenOperand(OpCode.OperandType);
 
+    /// <summary>Gets the size of the bytes a wildcard cannot cover: the opcode and, for <c>switch</c>, its target count.</summary>
+    public int FixedSize => OpCode.Size + (OpCode.OperandType == OperandType.InlineSwitch ? sizeof(uint) : 0);
+
     /// <summary>Tries to decode the instruction starting at <paramref name="offset"/>.</summary>
     /// <returns><see langword="false"/> when the IL is truncated or has an unknown opcode.</returns>
     public static bool TryRead(ReadOnlySpan<byte> il, int offset, out IlInstruction instruction, [NotNullWhen(false)] out string? error)

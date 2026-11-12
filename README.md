@@ -23,6 +23,7 @@ You can **write** masks (by hand, from a method body, or from ILSpy / dnSpy / il
 
 - [`docs/instructions.md`](docs/instructions.md): how every IL instruction maps to mask bytes, and which operands are wildcards.
 - [Complete example](#complete-example): every feature in one program.
+- [Command line](#command-line): the `ilmask` tool, to do the same on assembly files.
 
 ## Requirements
 
@@ -37,7 +38,8 @@ into a folder, then add it to your project:
 dotnet add package ILMask --source ./path/to/that/folder
 ```
 
-Each release also has `ILMask.dll` (with `ILMask.xml` for IntelliSense) if you prefer a plain reference.
+Each release also has `ILMask.dll` (with `ILMask.xml` for IntelliSense) if you prefer a plain reference,
+and `ILMask.Cli.<version>.nupkg`, the [command-line tool](#command-line).
 
 ## Release
 
@@ -90,6 +92,9 @@ IlMask.TryCreate([0x02, 0x7B, null, null, null, null, 0x2A], out fromCode);
 // From a compiled method: metadata tokens (fields, methods, types, strings, signatures)
 // are wildcarded, because they change from one build to another. Everything else is exact.
 IlMask.TryFromIl(il, out fromIl);
+
+// Same, straight from reflection; fails with a reason when the method has no IL body.
+IlMask.TryFromMethod(typeof(Foo).GetMethod("Bar"), out fromIl);
 
 // To text, readable again by IlMask.TryParse.
 Console.WriteLine(fromIl!.ToString());   // "02 7B ?? ?? ?? ?? 2A"
@@ -144,8 +149,15 @@ foreach (IlMaskMatch match in mask.Find(il))
     int offset = match.Offset;                       // where the match starts
     ReadOnlyMemory<byte> bytes = match.Bytes;        // every matched byte
     ReadOnlyMemory<byte> content = match.Wildcards;  // only the bytes under the ?? wildcards
+    IReadOnlyList<ReadOnlyMemory<byte>> groups = match.Groups;  // the same bytes, one entry per run of ??
 }
 ```
+
+`Groups` splits the content per run of consecutive wildcards: for `7B ?? ?? ?? ?? 28 ?? ?? ?? ??`,
+`Groups[0]` is the field token and `Groups[1]` the method token.
+
+`mask.Find(method)` takes a `MethodBase` directly, and two masks with the same pattern are equal
+(`Equals`, `GetHashCode`), so masks work as dictionary keys.
 
 | Method      | Matches start                      | Use it on                    |
 |-------------|------------------------------------|------------------------------|
@@ -168,6 +180,49 @@ foreach (IlMaskMatch match in ldstr!.Find(il))
     Console.WriteLine(method.Module.ResolveString(token));
 }
 ```
+
+### Find in a type or an assembly
+
+```csharp
+foreach (IlMaskMethodMatch found in mask.FindIn(typeof(Foo).Assembly))   // or mask.FindIn(typeof(Foo))
+{
+    Console.WriteLine($"{found.Method.DeclaringType}::{found.Method.Name} at {found.Match.Offset}");
+}
+```
+
+`FindIn(Assembly)` reads `assembly.GetTypes()`, which throws when a type cannot be loaded;
+in that case call `FindIn(Type)` on the types that did load.
+
+### Loosen a mask
+
+A mask from `TryFromIl` only wildcards metadata tokens. To keep matching after constants change
+or code moves, wildcard those operands too:
+
+```csharp
+IlMask? loose = null;
+
+mask.TryWildcard(IlOperands.Constants | IlOperands.Branches, out loose);
+// "1F 2A 2B 05"  ->  "1F ?? 2B ??"     (ldc.i4.s 42; br.s IL_0009)
+```
+
+`Constants` are the operands of `ldc.i4`, `ldc.i4.s`, `ldc.i8`, `ldc.r4`, `ldc.r8` (not the short
+forms such as `ldc.i4.1`, which have no operand). `Branches` are branch and `switch` targets; the
+`switch` target count stays exact.
+
+### Read a mask as instructions
+
+```csharp
+string? listing = null;
+
+mask.TryToListing(out listing);
+// IL_0000: ldarg.0
+// IL_0001: ldfld ??
+// IL_0006: ret
+```
+
+It fails, with a reason, when the mask is not a sequence of whole instructions (a wildcard on an
+opcode, a cut operand). `TryFromListing` reads the text back to the same mask when the wildcards
+cover exactly the metadata tokens.
 
 ### Complete example
 
@@ -265,6 +320,28 @@ Find ldstr:      offset 0, "Hello, "
 FindBytes:       10 field getters in ILMask.dll
 ```
 
+## Command line
+
+`ilmask` reads assemblies as files: it never loads or runs them.
+
+```bash
+dotnet tool install --global ILMask.Cli --add-source ./path/to/the/folder/with/the/nupkg
+
+ilmask find Foo.dll "02 7B ?? ?? ?? ?? 2A"     # every match, in every method body
+# Foo.Bar::get_Value IL_0000: 02 7B 01 00 00 04 2A
+
+ilmask from Foo.dll Foo.Bar::get_Value        # the mask of a method (one line per overload)
+# 02 7B ?? ?? ?? ?? 2A
+
+ilmask show "02 7B ?? ?? ?? ?? 2A"            # a mask as IL instructions
+# IL_0000: ldarg.0
+# IL_0001: ldfld ??
+# IL_0006: ret
+```
+
+Methods are named `Namespace.Type::Method`, with `Outer/Nested` for nested types. The exit code
+is 0, or 1 with the reason on the error output.
+
 ## Development
 
 ```bash
@@ -282,5 +359,6 @@ dotnet test                           # unit + integration tests
 
 - Explicit types everywhere, never `var` (enforced by the linter).
 - No `throw` and no `try`/`catch`: failures are `Try...` methods returning `false` and an error.
+  The one exception is `ilmask`'s `Program.Run`, which catches the file and image errors of the file it is given.
 - In every function, local variables are declared and initialized first, then a blank line,
   then the code.

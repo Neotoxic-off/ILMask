@@ -37,6 +37,7 @@ jobs:
       - name: Pack
         run: |
           dotnet pack src/ILMask -c Release -o artifacts -p:Version="$VERSION"
+          dotnet pack src/ILMask.Cli -c Release -o artifacts -p:Version="$VERSION"
           cp src/ILMask/bin/Release/net10.0/ILMask.dll src/ILMask/bin/Release/net10.0/ILMask.xml artifacts/
 
       - uses: actions/upload-artifact@v4

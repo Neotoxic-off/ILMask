@@ -5,6 +5,12 @@
     <Description>IDA-style masks (byte patterns with wildcards) for .NET IL code.</Description>
     <Authors>Neotoxic-off</Authors>
     <RepositoryUrl>https://github.com/Neotoxic-off/ILMask</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>il;cil;msil;mask;pattern;signature;ida;reverse-engineering</PackageTags>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>
